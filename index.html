@@ -11,26 +11,54 @@
     <script src="https://unpkg.com/dexie/dist/dexie.js"></script>
     <script src="https://unpkg.com/lucide@latest"></script>
     <style>
-        :root { --ios-bg: #F2F2F7; --ios-blue: #007AFF; }
-        body { background-color: var(--ios-bg); font-family: -apple-system, system-ui; margin: 0; padding: 0; }
-        
-        /* תיקון הריווח מהשעון וה-Dynamic Island באייפון 16 פרו */
-        .safe-top { 
-            padding-top: calc(env(safe-area-inset-top) + 15px); 
-        }
+            :root { --ios-bg: #F2F2F7; --ios-blue: #007AFF; }
+            
+            /* הגדרות גלובליות למניעת גלילה מיותרת וריווח נכון */
+            body { 
+                background-color: var(--ios-bg); 
+                font-family: -apple-system, system-ui; 
+                margin: 0; 
+                padding: 0;
+                min-height: 100vh;
+            }
+            
+            /* תיקון קריטי לכותרת - הוספת Safe Area */
+            header {
+                /* מבטיח שהרקע הלבן של הכותרת ימלא גם את האזור שמתחת למצלמה */
+                padding-top: env(safe-area-inset-top); 
+                background-color: rgba(255, 255, 255, 0.85);
+                backdrop-filter: blur(10px);
+                -webkit-backdrop-filter: blur(10px);
+            }
 
-        .tab-content { display: none; padding-bottom: 140px; }
-        .tab-content.active { display: block; animation: fadeIn 0.2s ease-in; }
-        @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
-        
-        .ios-card { background: white; border-radius: 14px; padding: 16px; margin-bottom: 12px; box-shadow: 0 1px 2px rgba(0,0,0,0.05); }
-        .modal { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 100; backdrop-filter: blur(10px); }
-        .modal-content { position: absolute; bottom: 0; width: 100%; background: white; border-radius: 20px 20px 0 0; padding: 20px; max-height: 90vh; overflow-y: auto; padding-bottom: 60px; }
-        
-        input, select, textarea { width: 100%; border: 1px solid #ddd; padding: 14px; border-radius: 12px; background: #f9f9f9; margin-bottom: 12px; font-size: 16px; outline: none; }
-        input:focus { border-color: var(--ios-blue); }
-        .btn-primary { background: var(--ios-blue); color: white; padding: 16px; border-radius: 14px; font-weight: bold; width: 100%; transition: opacity 0.2s; }
-        .btn-primary:active { opacity: 0.7; }
+            .safe-top { 
+                /* מוסיף ריווח פנימי לכותרת עצמה כדי שהטקסט ירד מתחת למצלמה */
+                padding-top: 15px; 
+                padding-bottom: 12px;
+            }
+
+            .tab-content { display: none; padding-bottom: 140px; }
+            .tab-content.active { display: block; animation: fadeIn 0.2s ease-in; }
+            
+            @keyframes fadeIn { 
+                from { opacity: 0; transform: translateY(5px); } 
+                to { opacity: 1; transform: translateY(0); } 
+            }
+            
+            .ios-card { background: white; border-radius: 14px; padding: 16px; margin-bottom: 12px; box-shadow: 0 1px 2px rgba(0,0,0,0.05); }
+            .modal { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 100; backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); }
+            .modal-content { position: absolute; bottom: 0; width: 100%; background: white; border-radius: 20px 20px 0 0; padding: 20px; max-height: 90vh; overflow-y: auto; padding-bottom: calc(env(safe-area-inset-bottom) + 60px); }
+            
+            input, select, textarea { width: 100%; border: 1px solid #ddd; padding: 14px; border-radius: 12px; background: #f9f9f9; margin-bottom: 12px; font-size: 16px; outline: none; }
+            input:focus { border-color: var(--ios-blue); }
+            
+            .btn-primary { background: var(--ios-blue); color: white; padding: 16px; border-radius: 14px; font-weight: bold; width: 100%; transition: opacity 0.2s; }
+            .btn-primary:active { opacity: 0.7; }
+
+            /* תיקון לניווט התחתון שיעבוד עם ה-Home Bar */
+            nav {
+                padding-bottom: env(safe-area-inset-bottom);
+            }
     </style>
 </head>
 <body>
