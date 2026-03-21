@@ -2,210 +2,300 @@
 <html lang="he" dir="rtl">
 <head>
     <meta charset="UTF-8">
-    <link rel="manifest" href="manifest.json">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no">
     <title>מערכת טבלת צדק</title>
-    
+    <link rel="manifest" href="manifest.json">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/dexie/dist/dexie.js"></script>
     <script src="https://unpkg.com/lucide@latest"></script>
-
     <style>
-        :root { --ios-blue: #007AFF; --ios-bg: #F2F2F7; }
-        body { background-color: var(--ios-bg); font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto; overflow-x: hidden; }
-        .tab-content { display: none; padding-bottom: 100px; }
-        .tab-content.active { display: block; animation: fadeIn 0.2s ease-in; }
-        @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
-        .ios-card { background: white; border-radius: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.05); margin-bottom: 12px; padding: 16px; }
-        .modal { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.4); z-index: 100; backdrop-filter: blur(4px); }
-        .modal-content { position: absolute; bottom: 0; width: 100%; background: white; border-radius: 20px 20px 0 0; padding: 20px; max-height: 90vh; overflow-y: auto; }
+        :root { --ios-bg: #F2F2F7; --ios-blue: #007AFF; }
+        body { background-color: var(--ios-bg); font-family: -apple-system, system-ui; margin: 0; }
+        .tab-content { display: none; padding-bottom: 120px; }
+        .tab-content.active { display: block; animation: fadeIn 0.2s; }
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+        .ios-card { background: white; border-radius: 14px; padding: 16px; margin-bottom: 12px; shadow: 0 1px 2px rgba(0,0,0,0.05); }
+        .modal { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 100; backdrop-filter: blur(10px); }
+        .modal-content { position: absolute; bottom: 0; width: 100%; background: white; border-radius: 20px 20px 0 0; padding: 20px; max-height: 90vh; overflow-y: auto; padding-bottom: 40px; }
+        input, select, textarea { width: 100%; border: 1px solid #ddd; padding: 12px; border-radius: 12px; background: #f9f9f9; margin-bottom: 10px; font-size: 16px; }
+        .btn-primary { background: var(--ios-blue); color: white; padding: 14px; border-radius: 14px; font-weight: bold; width: 100%; }
         .safe-top { padding-top: env(safe-area-inset-top); }
     </style>
 </head>
 <body>
 
-    <header class="bg-white/80 backdrop-blur-lg border-b sticky top-0 z-40 safe-top">
-        <div class="px-5 py-3 flex justify-between items-center">
-            <h1 id="page-title" class="text-2xl font-bold tracking-tight">טבלת צדק</h1>
-            <div class="flex gap-2">
-                <button onclick="openModal('addExecution')" class="bg-blue-600 text-white p-2 rounded-full shadow-lg active:scale-95 transition">
-                    <i data-lucide="plus" class="w-6 h-6"></i>
-                </button>
-            </div>
-        </div>
+    <header class="bg-white/80 backdrop-blur-md sticky top-0 z-50 border-b px-5 py-4 flex justify-between items-center safe-top">
+        <h1 id="page-title" class="text-2xl font-bold">טבלת צדק</h1>
+        <button onclick="openModal('addExecution')" class="bg-blue-600 text-white p-2 rounded-full shadow-lg">
+            <i data-lucide="plus" class="w-6 h-6"></i>
+        </button>
     </header>
 
-    <main class="p-4" id="main-content">
-        
+    <main class="p-4">
         <section id="justice" class="tab-content active">
             <div class="flex gap-2 mb-4">
-                <select id="justiceSort" onchange="renderJusticeTable()" class="bg-white border rounded-xl px-3 py-2 text-sm flex-1 shadow-sm">
-                    <option value="totalDesc">סה"כ: מהגבוה לנמוך</option>
-                    <option value="totalAsc">סה"כ: מהנמוך לגבוה</option>
+                <select id="justiceSort" onchange="renderJustice()" class="flex-1">
+                    <option value="totalDesc">מיון: ציון גבוה</option>
+                    <option value="totalAsc">מיון: ציון נמוך</option>
                 </select>
-                <button onclick="toggleFilters()" class="bg-white border rounded-xl px-4 py-2 shadow-sm text-gray-600">
-                    <i data-lucide="filter" class="w-4 h-4"></i>
-                </button>
+                <input type="text" id="justiceFilter" oninput="renderJustice()" placeholder="חיפוש חופשי (שם/מדור...)" class="flex-1">
             </div>
             <div id="justiceList"></div>
         </section>
 
         <section id="people" class="tab-content">
-            <button onclick="openModal('addPerson')" class="ios-card w-full flex items-center justify-center gap-2 text-blue-600 font-medium">
-                <i data-lucide="user-plus" class="w-5 h-5"></i> הוספת אדם חדש
-            </button>
+            <div class="flex gap-2 mb-4">
+                <input type="text" id="peopleFilter" oninput="renderPeople()" placeholder="חפש איש..." class="flex-1">
+                <button onclick="openModal('addPerson')" class="bg-blue-600 text-white px-4 rounded-xl"><i data-lucide="user-plus"></i></button>
+            </div>
             <div id="peopleList"></div>
         </section>
 
         <section id="guards" class="tab-content">
-            <button onclick="openModal('addGuard')" class="ios-card w-full flex items-center justify-center gap-2 text-blue-600 font-medium">
-                <i data-lucide="shield-plus" class="w-5 h-5"></i> הגדרת סוג שמירה
+            <button onclick="openModal('addGuard')" class="ios-card w-full flex items-center justify-center gap-2 text-blue-600 font-bold mb-4">
+                <i data-lucide="shield-plus"></i> הגדרת שמירה חדשה
             </button>
             <div id="guardsList"></div>
         </section>
 
         <section id="duties" class="tab-content">
-            <button onclick="openModal('addDuty')" class="ios-card w-full flex items-center justify-center gap-2 text-blue-600 font-medium">
-                <i data-lucide="clipboard-list" class="w-5 h-5"></i> הגדרת סוג תורנות
+            <button onclick="openModal('addDuty')" class="ios-card w-full flex items-center justify-center gap-2 text-blue-600 font-bold mb-4">
+                <i data-lucide="clipboard-list"></i> הגדרת תורנות חדשה
             </button>
             <div id="dutiesList"></div>
         </section>
     </main>
 
-    <nav class="fixed bottom-0 w-full bg-white/90 backdrop-blur-md border-t flex justify-around py-3 pb-8 z-40">
-        <button onclick="switchTab('justice')" class="tab-btn flex flex-col items-center text-blue-600" data-tab="justice">
-            <i data-lucide="scale"></i><span class="text-[10px] mt-1 font-medium">צדק</span>
-        </button>
-        <button onclick="switchTab('people')" class="tab-btn flex flex-col items-center text-gray-400" data-tab="people">
-            <i data-lucide="users"></i><span class="text-[10px] mt-1 font-medium">אנשים</span>
-        </button>
-        <button onclick="switchTab('guards')" class="tab-btn flex flex-col items-center text-gray-400" data-tab="guards">
-            <i data-lucide="shield"></i><span class="text-[10px] mt-1 font-medium">שמירות</span>
-        </button>
-        <button onclick="switchTab('duties')" class="tab-btn flex flex-col items-center text-gray-400" data-tab="duties">
-            <i data-lucide="coffee"></i><span class="text-[10px] mt-1 font-medium">תורנויות</span>
-        </button>
+    <nav class="fixed bottom-0 w-full bg-white/90 border-t flex justify-around py-4 pb-10 z-50">
+        <button onclick="switchTab('justice')" id="btn-justice" class="text-blue-600 flex flex-col items-center"><i data-lucide="scale"></i><span class="text-[10px] mt-1">צדק</span></button>
+        <button onclick="switchTab('people')" id="btn-people" class="text-gray-400 flex flex-col items-center"><i data-lucide="users"></i><span class="text-[10px] mt-1">אנשים</span></button>
+        <button onclick="switchTab('guards')" id="btn-guards" class="text-gray-400 flex flex-col items-center"><i data-lucide="shield"></i><span class="text-[10px] mt-1">שמירות</span></button>
+        <button onclick="switchTab('duties')" id="btn-duties" class="text-gray-400 flex flex-col items-center"><i data-lucide="coffee"></i><span class="text-[10px] mt-1">תורנויות</span></button>
     </nav>
 
     <div id="addExecutionModal" class="modal" onclick="closeModalOnBackdrop(event)">
-        <div class="modal-content shadow-2xl">
-            <h3 class="text-xl font-bold mb-4">שיבוץ חדש</h3>
-            <form id="executionForm" class="space-y-4">
-                <div>
-                    <label class="block text-sm font-medium text-gray-700">בחר אדם</label>
-                    <select id="execPerson" class="w-full border rounded-lg p-3 mt-1 bg-gray-50" required></select>
-                </div>
-                <div>
-                    <label class="block text-sm font-medium text-gray-700">סוג המשימה</label>
-                    <select id="execTask" class="w-full border rounded-lg p-3 mt-1 bg-gray-50" required></select>
-                </div>
-                <div>
-                    <label class="block text-sm font-medium text-gray-700">תאריך</label>
-                    <input type="date" id="execDate" class="w-full border rounded-lg p-3 mt-1 bg-gray-50" required>
-                </div>
-                <button type="submit" class="w-full bg-blue-600 text-white py-4 rounded-xl font-bold mt-4 shadow-blue-200 shadow-lg">שמור שיבוץ</button>
-                <button type="button" onclick="closeAllModals()" class="w-full py-2 text-gray-500">ביטול</button>
+        <div class="modal-content">
+            <h2 class="text-xl font-bold mb-4">שיבוץ חדש לתאריך</h2>
+            <form id="execForm">
+                <label class="text-xs text-gray-500">בחר חייל</label>
+                <select id="execPerson" required></select>
+                <label class="text-xs text-gray-500">בחר משימה (שמירה/תורנות)</label>
+                <select id="execTask" required></select>
+                <label class="text-xs text-gray-500">תאריך ביצוע</label>
+                <input type="date" id="execDate" required>
+                <button type="submit" class="btn-primary mt-4">שמור שיבוץ</button>
             </form>
         </div>
     </div>
 
+    <div id="addPersonModal" class="modal" onclick="closeModalOnBackdrop(event)">
+        <div class="modal-content">
+            <h2 class="text-xl font-bold mb-4">הוספת חייל חדש</h2>
+            <form id="personForm">
+                <input type="number" id="pId" placeholder="מספר אישי" required>
+                <input type="text" id="pName" placeholder="שם מלא" required>
+                <input type="text" id="pSection" placeholder="מדור" required>
+                <input type="text" id="pTeam" placeholder="צוות" required>
+                <input type="text" id="pService" placeholder="סוג שירות">
+                <textarea id="pExemptions" placeholder="פטורים (מופרדים בפסיקים)"></textarea>
+                <button type="submit" class="btn-primary">הוסף איש</button>
+            </form>
+        </div>
+    </div>
+
+    <div id="addGuardModal" class="modal" onclick="closeModalOnBackdrop(event)">
+        <div class="modal-content">
+            <h2 class="text-xl font-bold mb-4">הגדרת סוג שמירה</h2>
+            <form id="guardForm">
+                <input type="text" id="gType" placeholder="סוג (למשל: שמירת שער)" required>
+                <input type="text" id="gLoc" placeholder="מקום">
+                <input type="number" id="gRank" placeholder="דירוג (ניקוד)" required>
+                <input type="text" id="gArm" placeholder="מחסן נשק">
+                <button type="submit" class="btn-primary">שמור סוג שמירה</button>
+            </form>
+        </div>
+    </div>
+
+    <div id="personInfoModal" class="modal" onclick="closeModalOnBackdrop(event)">
+        <div class="modal-content">
+            <div id="personDetailsUI"></div>
+            <div class="mt-6">
+                <h3 class="font-bold border-b pb-2 mb-2">היסטוריית משימות</h3>
+                <div id="personHistoryUI" class="space-y-2"></div>
+            </div>
+            <button id="deletePersonBtn" class="w-full text-red-500 font-bold py-6 mt-4 border-t">מחק איש מהמערכת</button>
+            <button onclick="closeAllModals()" class="w-full py-2 text-gray-400 text-sm">סגור</button>
+        </div>
+    </div>
+
     <script>
-        const db = new Dexie("JusticeAppDB");
+        const db = new Dexie("ZadekDB");
         db.version(1).stores({
-            people: 'personalId, name, section, team, serviceType',
+            people: 'personalId, name, section, team, serviceType, exemptions',
             guards: '++id, type, location, rank',
             duties: '++id, type, location, rank',
-            executions: '++id, taskId, personalId, date, category, score'
+            executions: '++id, taskId, personalId, date, category, score, taskName'
         });
-
-        // --- פונקציות ליבה ---
 
         async function init() {
             lucide.createIcons();
-            await renderJusticeTable();
-            await populateDropdowns();
+            renderJustice();
+            updateDropdowns();
         }
 
-        async function populateDropdowns() {
+        // --- רינדור דפים ---
+        async function renderJustice() {
+            const filter = document.getElementById('justiceFilter').value.toLowerCase();
+            const sort = document.getElementById('justiceSort').value;
             const people = await db.people.toArray();
-            const guards = await db.guards.toArray();
-            const duties = await db.duties.toArray();
+            const execs = await db.executions.toArray();
 
-            const pSelect = document.getElementById('execPerson');
-            pSelect.innerHTML = people.map(p => `<option value="${p.personalId}">${p.name} (${p.personalId})</option>`).join('');
-
-            const tSelect = document.getElementById('execTask');
-            let taskHtml = `<optgroup label="שמירות">`;
-            taskHtml += guards.map(g => `<option value="guard|${g.id}|${g.rank}">${g.type} (${g.location})</option>`).join('');
-            taskHtml += `</optgroup><optgroup label="תורנויות">`;
-            taskHtml += duties.map(d => `<option value="duty|${d.id}|${d.rank}">${d.type} (${d.location})</option>`).join('');
-            tSelect.innerHTML = taskHtml + `</optgroup>`;
-        }
-
-        // --- רינדור טבלת צדק ---
-        async function renderJusticeTable() {
-            const people = await db.people.toArray();
-            const executions = await db.executions.toArray();
-            const sortVal = document.getElementById('justiceSort').value;
-
-            let justiceData = people.map(p => {
-                const pExecs = executions.filter(e => e.personalId == p.personalId);
-                const guardScore = pExecs.filter(e => e.category === 'guard').reduce((sum, e) => sum + Number(e.score), 0);
-                const dutyScore = pExecs.filter(e => e.category === 'duty').reduce((sum, e) => sum + Number(e.score), 0);
-                return { ...p, guardScore, dutyScore, total: guardScore + dutyScore };
+            let data = people.map(p => {
+                const pExecs = execs.filter(e => e.personalId == p.personalId);
+                const gScore = pExecs.filter(e => e.category === 'guard').reduce((s, e) => s + Number(e.score), 0);
+                const dScore = pExecs.filter(e => e.category === 'duty').reduce((s, e) => s + Number(e.score), 0);
+                return { ...p, gScore, dScore, total: gScore + dScore };
             });
 
-            if(sortVal === 'totalDesc') justiceData.sort((a,b) => b.total - a.total);
-            else if(sortVal === 'totalAsc') justiceData.sort((a,b) => a.total - b.total);
+            if(filter) data = data.filter(p => p.name.includes(filter) || p.personalId.toString().includes(filter));
+            data.sort((a,b) => sort === 'totalDesc' ? b.total - a.total : a.total - b.total);
 
-            const container = document.getElementById('justiceList');
-            container.innerHTML = justiceData.map(p => `
-                <div class="ios-card flex justify-between items-center">
+            document.getElementById('justiceList').innerHTML = data.map(p => `
+                <div class="ios-card flex justify-between items-center active:bg-gray-50" onclick="showPerson('${p.personalId}')">
                     <div>
                         <div class="font-bold text-lg">${p.name}</div>
-                        <div class="text-xs text-gray-500">מ.א: ${p.personalId} | ${p.team}</div>
+                        <div class="text-xs text-gray-400">${p.section} | ${p.team}</div>
                     </div>
                     <div class="text-left">
-                        <div class="text-[10px] text-gray-400 uppercase">ניקוד סה"כ</div>
-                        <div class="text-xl font-black text-blue-600">${p.total}</div>
-                        <div class="text-[10px] text-gray-500">ש: ${p.guardScore} | ת: ${p.dutyScore}</div>
+                        <div class="text-2xl font-black text-blue-600">${p.total}</div>
+                        <div class="text-[10px] text-gray-400">ש: ${p.gScore} | ת: ${p.dScore}</div>
                     </div>
                 </div>
             `).join('');
         }
 
-        // --- טיפול בטפסים ---
-        document.getElementById('executionForm').onsubmit = async (e) => {
-            e.preventDefault();
-            const [category, taskId, score] = document.getElementById('execTask').value.split('|');
-            await db.executions.add({
-                personalId: document.getElementById('execPerson').value,
-                taskId: taskId,
-                category: category,
-                score: score,
-                date: document.getElementById('execDate').value
-            });
-            closeAllModals();
-            renderJusticeTable();
-        };
-
-        // --- ניווט UI ---
-        function switchTab(tabId) {
-            document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
-            document.querySelectorAll('.tab-btn').forEach(b => b.classList.replace('text-blue-600', 'text-gray-400'));
-            
-            document.getElementById(tabId).classList.add('active');
-            document.querySelector(`[data-tab="${tabId}"]`).classList.replace('text-gray-400', 'text-blue-600');
-            
-            const titles = { justice: 'טבלת צדק', people: 'אנשים', guards: 'שמירות', duties: 'תורנויות' };
-            document.getElementById('page-title').innerText = titles[tabId];
-            window.scrollTo(0,0);
+        async function renderPeople() {
+            const filter = document.getElementById('peopleFilter').value.toLowerCase();
+            const people = await db.people.toArray();
+            const filtered = people.filter(p => p.name.toLowerCase().includes(filter));
+            document.getElementById('peopleList').innerHTML = filtered.map(p => `
+                <div class="ios-card flex justify-between" onclick="showPerson('${p.personalId}')">
+                    <div><strong>${p.name}</strong><br><span class="text-xs text-gray-500">${p.personalId}</span></div>
+                    <i data-lucide="chevron-left" class="text-gray-300"></i>
+                </div>
+            `).join('');
+            lucide.createIcons();
         }
 
-        function openModal(type) { document.getElementById(type + 'Modal').style.display = 'block'; }
+        async function renderGuards() {
+            const guards = await db.guards.toArray();
+            document.getElementById('guardsList').innerHTML = guards.map(g => `
+                <div class="ios-card flex justify-between items-center">
+                    <div><strong>${g.type}</strong><br><span class="text-xs text-gray-500">${g.location} | ניקוד: ${g.rank}</span></div>
+                    <button onclick="deleteItem('guards', ${g.id})" class="text-red-400"><i data-lucide="trash-2" class="w-5"></i></button>
+                </div>
+            `).join('');
+            lucide.createIcons();
+        }
+
+        async function renderDuties() {
+            const duties = await db.duties.toArray();
+            document.getElementById('dutiesList').innerHTML = duties.map(d => `
+                <div class="ios-card flex justify-between items-center">
+                    <div><strong>${d.type}</strong><br><span class="text-xs text-gray-500">${d.location} | ניקוד: ${d.rank}</span></div>
+                    <button onclick="deleteItem('duties', ${d.id})" class="text-red-400"><i data-lucide="trash-2" class="w-5"></i></button>
+                </div>
+            `).join('');
+            lucide.createIcons();
+        }
+
+        async function showPerson(id) {
+            const p = await db.people.get(id);
+            const execs = await db.executions.where('personalId').equals(id).toArray();
+            document.getElementById('personDetailsUI').innerHTML = `
+                <h2 class="text-2xl font-bold">${p.name}</h2>
+                <p class="text-gray-500">מ.א ${p.personalId} | ${p.section} - ${p.team}</p>
+                <div class="bg-blue-50 p-3 rounded-lg mt-3 text-sm"><strong>פטורים:</strong> ${p.exemptions || 'אין'}</div>
+            `;
+            document.getElementById('personHistoryUI').innerHTML = execs.map(e => `
+                <div class="flex justify-between text-sm border-b pb-1">
+                    <span>${e.date} - ${e.taskName}</span>
+                    <span class="font-bold text-blue-600">+${e.score}</span>
+                </div>
+            `).join('') || 'אין היסטוריה';
+            document.getElementById('deletePersonBtn').onclick = async () => {
+                if(confirm('למחוק את האיש וכל השיבוצים שלו?')) {
+                    await db.people.delete(id);
+                    await db.executions.where('personalId').equals(id).delete();
+                    closeAllModals(); renderJustice(); renderPeople();
+                }
+            };
+            openModal('personInfo');
+        }
+
+        // --- לוגיקה עסקית ---
+        async function updateDropdowns() {
+            const p = await db.people.toArray();
+            const g = await db.guards.toArray();
+            const d = await db.duties.toArray();
+            document.getElementById('execPerson').innerHTML = p.map(i => `<option value="${i.personalId}">${i.name}</option>`).join('');
+            let tasks = `<optgroup label="שמירות">` + g.map(i => `<option value="guard|${i.rank}|${i.type}">${i.type} (${i.rank} נק')</option>`).join('') + `</optgroup>`;
+            tasks += `<optgroup label="תורנויות">` + d.map(i => `<option value="duty|${i.rank}|${i.type}">${i.type} (${i.rank} נק')</option>`).join('') + `</optgroup>`;
+            document.getElementById('execTask').innerHTML = tasks;
+        }
+
+        document.getElementById('personForm').onsubmit = async (e) => {
+            e.preventDefault();
+            await db.people.add({
+                personalId: document.getElementById('pId').value,
+                name: document.getElementById('pName').value,
+                section: document.getElementById('pSection').value,
+                team: document.getElementById('pTeam').value,
+                serviceType: document.getElementById('pService').value,
+                exemptions: document.getElementById('pExemptions').value
+            });
+            e.target.reset(); closeAllModals(); renderPeople(); renderJustice(); updateDropdowns();
+        };
+
+        document.getElementById('guardForm').onsubmit = async (e) => {
+            e.preventDefault();
+            await db.guards.add({ type: document.getElementById('gType').value, location: document.getElementById('gLoc').value, rank: document.getElementById('gRank').value, armory: document.getElementById('gArm').value });
+            e.target.reset(); closeAllModals(); renderGuards(); updateDropdowns();
+        };
+
+        document.getElementById('execForm').onsubmit = async (e) => {
+            e.preventDefault();
+            const [cat, score, name] = document.getElementById('execTask').value.split('|');
+            await db.executions.add({
+                personalId: document.getElementById('execPerson').value,
+                score: score,
+                taskName: name,
+                category: cat,
+                date: document.getElementById('execDate').value
+            });
+            closeAllModals(); renderJustice();
+        };
+
+        async function deleteItem(table, id) {
+            if(confirm('למחוק?')) { await db[table].delete(id); renderGuards(); renderDuties(); updateDropdowns(); }
+        }
+
+        // --- UI & Navigation ---
+        function switchTab(id) {
+            document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+            document.querySelectorAll('nav button').forEach(b => b.classList.replace('text-blue-600', 'text-gray-400'));
+            document.getElementById(id).classList.add('active');
+            document.getElementById('btn-' + id).classList.replace('text-gray-400', 'text-blue-600');
+            document.getElementById('page-title').innerText = {justice:'טבלת צדק', people:'אנשים', guards:'שמירות', duties:'תורנויות'}[id];
+            if(id === 'guards') renderGuards();
+            if(id === 'duties') renderDuties();
+            if(id === 'people') renderPeople();
+            if(id === 'justice') renderJustice();
+        }
+
+        function openModal(id) { document.getElementById(id + 'Modal').style.display = 'block'; }
         function closeAllModals() { document.querySelectorAll('.modal').forEach(m => m.style.display = 'none'); }
         function closeModalOnBackdrop(e) { if(e.target.classList.contains('modal')) closeAllModals(); }
 
