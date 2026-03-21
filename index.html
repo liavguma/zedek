@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <link rel="manifest" href="manifest.json">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no">
+    <title>מערכת טבלת צדק</title>
+    
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/dexie/dist/dexie.js"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+
+    <style>
+        :root { --ios-blue: #007AFF; --ios-bg: #F2F2F7; }
+        body { background-color: var(--ios-bg); font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto; overflow-x: hidden; }
+        .tab-content { display: none; padding-bottom: 100px; }
+        .tab-content.active { display: block; animation: fadeIn 0.2s ease-in; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
+        .ios-card { background: white; border-radius: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.05); margin-bottom: 12px; padding: 16px; }
+        .modal { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.4); z-index: 100; backdrop-filter: blur(4px); }
+        .modal-content { position: absolute; bottom: 0; width: 100%; background: white; border-radius: 20px 20px 0 0; padding: 20px; max-height: 90vh; overflow-y: auto; }
+        .safe-top { padding-top: env(safe-area-inset-top); }
+    </style>
+</head>
+<body>
+
+    <header class="bg-white/80 backdrop-blur-lg border-b sticky top-0 z-40 safe-top">
+        <div class="px-5 py-3 flex justify-between items-center">
+            <h1 id="page-title" class="text-2xl font-bold tracking-tight">טבלת צדק</h1>
+            <div class="flex gap-2">
+                <button onclick="openModal('addExecution')" class="bg-blue-600 text-white p-2 rounded-full shadow-lg active:scale-95 transition">
+                    <i data-lucide="plus" class="w-6 h-6"></i>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <main class="p-4" id="main-content">
+        
+        <section id="justice" class="tab-content active">
+            <div class="flex gap-2 mb-4">
+                <select id="justiceSort" onchange="renderJusticeTable()" class="bg-white border rounded-xl px-3 py-2 text-sm flex-1 shadow-sm">
+                    <option value="totalDesc">סה"כ: מהגבוה לנמוך</option>
+                    <option value="totalAsc">סה"כ: מהנמוך לגבוה</option>
+                </select>
+                <button onclick="toggleFilters()" class="bg-white border rounded-xl px-4 py-2 shadow-sm text-gray-600">
+                    <i data-lucide="filter" class="w-4 h-4"></i>
+                </button>
+            </div>
+            <div id="justiceList"></div>
+        </section>
+
+        <section id="people" class="tab-content">
+            <button onclick="openModal('addPerson')" class="ios-card w-full flex items-center justify-center gap-2 text-blue-600 font-medium">
+                <i data-lucide="user-plus" class="w-5 h-5"></i> הוספת אדם חדש
+            </button>
+            <div id="peopleList"></div>
+        </section>
+
+        <section id="guards" class="tab-content">
+            <button onclick="openModal('addGuard')" class="ios-card w-full flex items-center justify-center gap-2 text-blue-600 font-medium">
+                <i data-lucide="shield-plus" class="w-5 h-5"></i> הגדרת סוג שמירה
+            </button>
+            <div id="guardsList"></div>
+        </section>
+
+        <section id="duties" class="tab-content">
+            <button onclick="openModal('addDuty')" class="ios-card w-full flex items-center justify-center gap-2 text-blue-600 font-medium">
+                <i data-lucide="clipboard-list" class="w-5 h-5"></i> הגדרת סוג תורנות
+            </button>
+            <div id="dutiesList"></div>
+        </section>
+    </main>
+
+    <nav class="fixed bottom-0 w-full bg-white/90 backdrop-blur-md border-t flex justify-around py-3 pb-8 z-40">
+        <button onclick="switchTab('justice')" class="tab-btn flex flex-col items-center text-blue-600" data-tab="justice">
+            <i data-lucide="scale"></i><span class="text-[10px] mt-1 font-medium">צדק</span>
+        </button>
+        <button onclick="switchTab('people')" class="tab-btn flex flex-col items-center text-gray-400" data-tab="people">
+            <i data-lucide="users"></i><span class="text-[10px] mt-1 font-medium">אנשים</span>
+        </button>
+        <button onclick="switchTab('guards')" class="tab-btn flex flex-col items-center text-gray-400" data-tab="guards">
+            <i data-lucide="shield"></i><span class="text-[10px] mt-1 font-medium">שמירות</span>
+        </button>
+        <button onclick="switchTab('duties')" class="tab-btn flex flex-col items-center text-gray-400" data-tab="duties">
+            <i data-lucide="coffee"></i><span class="text-[10px] mt-1 font-medium">תורנויות</span>
+        </button>
+    </nav>
+
+    <div id="addExecutionModal" class="modal" onclick="closeModalOnBackdrop(event)">
+        <div class="modal-content shadow-2xl">
+            <h3 class="text-xl font-bold mb-4">שיבוץ חדש</h3>
+            <form id="executionForm" class="space-y-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700">בחר אדם</label>
+                    <select id="execPerson" class="w-full border rounded-lg p-3 mt-1 bg-gray-50" required></select>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700">סוג המשימה</label>
+                    <select id="execTask" class="w-full border rounded-lg p-3 mt-1 bg-gray-50" required></select>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700">תאריך</label>
+                    <input type="date" id="execDate" class="w-full border rounded-lg p-3 mt-1 bg-gray-50" required>
+                </div>
+                <button type="submit" class="w-full bg-blue-600 text-white py-4 rounded-xl font-bold mt-4 shadow-blue-200 shadow-lg">שמור שיבוץ</button>
+                <button type="button" onclick="closeAllModals()" class="w-full py-2 text-gray-500">ביטול</button>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        const db = new Dexie("JusticeAppDB");
+        db.version(1).stores({
+            people: 'personalId, name, section, team, serviceType',
+            guards: '++id, type, location, rank',
+            duties: '++id, type, location, rank',
+            executions: '++id, taskId, personalId, date, category, score'
+        });
+
+        // --- פונקציות ליבה ---
+
+        async function init() {
+            lucide.createIcons();
+            await renderJusticeTable();
+            await populateDropdowns();
+        }
+
+        async function populateDropdowns() {
+            const people = await db.people.toArray();
+            const guards = await db.guards.toArray();
+            const duties = await db.duties.toArray();
+
+            const pSelect = document.getElementById('execPerson');
+            pSelect.innerHTML = people.map(p => `<option value="${p.personalId}">${p.name} (${p.personalId})</option>`).join('');
+
+            const tSelect = document.getElementById('execTask');
+            let taskHtml = `<optgroup label="שמירות">`;
+            taskHtml += guards.map(g => `<option value="guard|${g.id}|${g.rank}">${g.type} (${g.location})</option>`).join('');
+            taskHtml += `</optgroup><optgroup label="תורנויות">`;
+            taskHtml += duties.map(d => `<option value="duty|${d.id}|${d.rank}">${d.type} (${d.location})</option>`).join('');
+            tSelect.innerHTML = taskHtml + `</optgroup>`;
+        }
+
+        // --- רינדור טבלת צדק ---
+        async function renderJusticeTable() {
+            const people = await db.people.toArray();
+            const executions = await db.executions.toArray();
+            const sortVal = document.getElementById('justiceSort').value;
+
+            let justiceData = people.map(p => {
+                const pExecs = executions.filter(e => e.personalId == p.personalId);
+                const guardScore = pExecs.filter(e => e.category === 'guard').reduce((sum, e) => sum + Number(e.score), 0);
+                const dutyScore = pExecs.filter(e => e.category === 'duty').reduce((sum, e) => sum + Number(e.score), 0);
+                return { ...p, guardScore, dutyScore, total: guardScore + dutyScore };
+            });
+
+            if(sortVal === 'totalDesc') justiceData.sort((a,b) => b.total - a.total);
+            else if(sortVal === 'totalAsc') justiceData.sort((a,b) => a.total - b.total);
+
+            const container = document.getElementById('justiceList');
+            container.innerHTML = justiceData.map(p => `
+                <div class="ios-card flex justify-between items-center">
+                    <div>
+                        <div class="font-bold text-lg">${p.name}</div>
+                        <div class="text-xs text-gray-500">מ.א: ${p.personalId} | ${p.team}</div>
+                    </div>
+                    <div class="text-left">
+                        <div class="text-[10px] text-gray-400 uppercase">ניקוד סה"כ</div>
+                        <div class="text-xl font-black text-blue-600">${p.total}</div>
+                        <div class="text-[10px] text-gray-500">ש: ${p.guardScore} | ת: ${p.dutyScore}</div>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        // --- טיפול בטפסים ---
+        document.getElementById('executionForm').onsubmit = async (e) => {
+            e.preventDefault();
+            const [category, taskId, score] = document.getElementById('execTask').value.split('|');
+            await db.executions.add({
+                personalId: document.getElementById('execPerson').value,
+                taskId: taskId,
+                category: category,
+                score: score,
+                date: document.getElementById('execDate').value
+            });
+            closeAllModals();
+            renderJusticeTable();
+        };
+
+        // --- ניווט UI ---
+        function switchTab(tabId) {
+            document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+            document.querySelectorAll('.tab-btn').forEach(b => b.classList.replace('text-blue-600', 'text-gray-400'));
+            
+            document.getElementById(tabId).classList.add('active');
+            document.querySelector(`[data-tab="${tabId}"]`).classList.replace('text-gray-400', 'text-blue-600');
+            
+            const titles = { justice: 'טבלת צדק', people: 'אנשים', guards: 'שמירות', duties: 'תורנויות' };
+            document.getElementById('page-title').innerText = titles[tabId];
+            window.scrollTo(0,0);
+        }
+
+        function openModal(type) { document.getElementById(type + 'Modal').style.display = 'block'; }
+        function closeAllModals() { document.querySelectorAll('.modal').forEach(m => m.style.display = 'none'); }
+        function closeModalOnBackdrop(e) { if(e.target.classList.contains('modal')) closeAllModals(); }
+
+        window.onload = init;
+    </script>
+</body>
+</html>
