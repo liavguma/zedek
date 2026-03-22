@@ -11,71 +11,54 @@
     <script src="https://unpkg.com/dexie/dist/dexie.js"></script>
     <script src="https://unpkg.com/lucide@latest"></script>
     <style>
-            :root { --ios-bg: #F2F2F7; --ios-blue: #007AFF; }
-            
-            /* הגדרות גלובליות למניעת גלילה מיותרת וריווח נכון */
-            body { 
-                background-color: var(--ios-bg); 
-                font-family: -apple-system, system-ui; 
-                margin: 0; 
-                padding: 0;
-                min-height: 100vh;
-            }
-            
-            /* תיקון קריטי לכותרת - הוספת Safe Area */
-            header {
-                /* מבטיח שהרקע הלבן של הכותרת ימלא גם את האזור שמתחת למצלמה */
-                padding-top: env(safe-area-inset-top); 
-                background-color: rgba(255, 255, 255, 0.85);
-                backdrop-filter: blur(10px);
-                -webkit-backdrop-filter: blur(10px);
-            }
+        :root { --ios-bg: #F2F2F7; --ios-blue: #007AFF; }
+        body { background-color: var(--ios-bg); font-family: -apple-system, system-ui; margin: 0; padding: 0; min-height: 100vh; }
+        
+        /* תיקון הריווח מהמצלמה/Dynamic Island */
+        header {
+            padding-top: env(safe-area-inset-top); 
+            background-color: rgba(255, 255, 255, 0.85);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+        }
+        .safe-top { 
+            padding-top: 15px; 
+            padding-bottom: 12px;
+        }
 
-            .safe-top { 
-                /* מוסיף ריווח פנימי לכותרת עצמה כדי שהטקסט ירד מתחת למצלמה */
-                padding-top: 15px; 
-                padding-bottom: 12px;
-            }
-
-            .tab-content { display: none; padding-bottom: 140px; }
-            .tab-content.active { display: block; animation: fadeIn 0.2s ease-in; }
-            
-            @keyframes fadeIn { 
-                from { opacity: 0; transform: translateY(5px); } 
-                to { opacity: 1; transform: translateY(0); } 
-            }
-            
-            .ios-card { background: white; border-radius: 14px; padding: 16px; margin-bottom: 12px; box-shadow: 0 1px 2px rgba(0,0,0,0.05); }
-            .modal { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 100; backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); }
-            .modal-content { position: absolute; bottom: 0; width: 100%; background: white; border-radius: 20px 20px 0 0; padding: 20px; max-height: 90vh; overflow-y: auto; padding-bottom: calc(env(safe-area-inset-bottom) + 60px); }
-            
-            input, select, textarea { width: 100%; border: 1px solid #ddd; padding: 14px; border-radius: 12px; background: #f9f9f9; margin-bottom: 12px; font-size: 16px; outline: none; }
-            input:focus { border-color: var(--ios-blue); }
-            
-            .btn-primary { background: var(--ios-blue); color: white; padding: 16px; border-radius: 14px; font-weight: bold; width: 100%; transition: opacity 0.2s; }
-            .btn-primary:active { opacity: 0.7; }
-
-            /* תיקון לניווט התחתון שיעבוד עם ה-Home Bar */
-            nav {
-                padding-bottom: env(safe-area-inset-bottom);
-            }
+        .tab-content { display: none; padding-bottom: 140px; }
+        .tab-content.active { display: block; animation: fadeIn 0.2s ease-in; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
+        
+        .ios-card { background: white; border-radius: 14px; padding: 16px; margin-bottom: 12px; box-shadow: 0 1px 2px rgba(0,0,0,0.05); }
+        .modal { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 100; backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); }
+        .modal-content { position: absolute; bottom: 0; width: 100%; background: white; border-radius: 20px 20px 0 0; padding: 20px; max-height: 90vh; overflow-y: auto; padding-bottom: calc(env(safe-area-inset-bottom) + 60px); }
+        
+        input, select, textarea { width: 100%; border: 1px solid #ddd; padding: 14px; border-radius: 12px; background: #f9f9f9; margin-bottom: 12px; font-size: 16px; outline: none; }
+        input:focus { border-color: var(--ios-blue); }
+        .btn-primary { background: var(--ios-blue); color: white; padding: 16px; border-radius: 14px; font-weight: bold; width: 100%; transition: opacity 0.2s; }
+        .btn-primary:active { opacity: 0.7; }
+        
+        nav { padding-bottom: env(safe-area-inset-bottom); }
     </style>
 </head>
 <body>
 
-    <header class="bg-white/80 backdrop-blur-md sticky top-0 z-50 border-b px-5 py-4 flex justify-between items-center safe-top">
-        <h1 id="page-title" class="text-2xl font-bold tracking-tight text-gray-900">טבלת צדק</h1>
-        <div class="flex items-center gap-3">
-            <label class="cursor-pointer text-gray-500 active:scale-90 transition p-1">
-                <i data-lucide="upload-cloud"></i>
-                <input type="file" id="importFile" class="hidden" onchange="importData(event)">
-            </label>
-            <button onclick="exportData()" class="text-gray-500 active:scale-90 transition p-1">
-                <i data-lucide="download-cloud"></i>
-            </button>
-            <button onclick="openModal('addExecution')" class="bg-blue-600 text-white p-2 rounded-full shadow-lg active:scale-90 transition ml-1">
-                <i data-lucide="plus" class="w-6 h-6"></i>
-            </button>
+    <header class="bg-white/80 sticky top-0 z-50 border-b px-5">
+        <div class="safe-top flex justify-between items-center">
+            <h1 id="page-title" class="text-2xl font-bold tracking-tight text-gray-900">טבלת צדק</h1>
+            <div class="flex items-center gap-3">
+                <label class="cursor-pointer text-gray-500 active:scale-90 transition p-1">
+                    <i data-lucide="upload-cloud"></i>
+                    <input type="file" id="importFile" class="hidden" onchange="importData(event)">
+                </label>
+                <button onclick="exportData()" class="text-gray-500 active:scale-90 transition p-1">
+                    <i data-lucide="download-cloud"></i>
+                </button>
+                <button onclick="openModal('addExecution')" class="bg-blue-600 text-white p-2 rounded-full shadow-lg active:scale-90 transition ml-1">
+                    <i data-lucide="plus" class="w-6 h-6"></i>
+                </button>
+            </div>
         </div>
     </header>
 
@@ -86,7 +69,7 @@
                     <option value="totalDesc">מיון: ציון גבוה</option>
                     <option value="totalAsc">מיון: ציון נמוך</option>
                 </select>
-                <input type="text" id="justiceFilter" oninput="renderJustice()" placeholder="Show only..." class="flex-1 shadow-sm">
+                <input type="text" id="justiceFilter" oninput="renderJustice()" placeholder="חיפוש חופשי..." class="flex-1 shadow-sm">
             </div>
             <div id="justiceList"></div>
         </section>
@@ -122,23 +105,59 @@
     </nav>
 
     <div id="addExecutionModal" class="modal" onclick="closeModalOnBackdrop(event)"><div class="modal-content"><h2 class="text-xl font-bold mb-4 border-b pb-2 text-center">שיבוץ חדש</h2><form id="execForm"><label class="text-xs text-gray-500 px-1">מי החייל?</label><select id="execPerson" required></select><label class="text-xs text-gray-500 px-1">מה המשימה?</label><select id="execTask" required></select><label class="text-xs text-gray-500 px-1">תאריך</label><input type="date" id="execDate" required><button type="submit" class="btn-primary mt-4">שמור שיבוץ</button><button type="button" onclick="closeAllModals()" class="w-full py-4 text-gray-400">ביטול</button></form></div></div>
-    <div id="addPersonModal" class="modal" onclick="closeModalOnBackdrop(event)"><div class="modal-content"><h2 class="text-xl font-bold mb-4 border-b pb-2">הוספת חייל</h2><form id="personForm"><input type="number" id="pId" placeholder="מספר אישי" required><input type="text" id="pName" placeholder="שם מלא" required><input type="text" id="pSection" placeholder="מדור" required><input type="text" id="pTeam" placeholder="צוות" required><textarea id="pExemptions" placeholder="פטורים..."></textarea><button type="submit" class="btn-primary">שמור</button></form></div></div>
+    
+    <div id="addPersonModal" class="modal" onclick="closeModalOnBackdrop(event)">
+        <div class="modal-content">
+            <h2 id="personModalTitle" class="text-xl font-bold mb-4 border-b pb-2">הוספת חייל</h2>
+            <form id="personForm">
+                <input type="number" id="pId" placeholder="מספר אישי" required>
+                <input type="text" id="pName" placeholder="שם מלא" required>
+                <input type="text" id="pSection" placeholder="מדור" required>
+                <input type="text" id="pTeam" placeholder="צוות" required>
+                <select id="pService">
+                    <option value="">בחר סוג שירות</option>
+                    <option value="חובה">חובה</option>
+                    <option value="קבע">קבע</option>
+                    <option value="אחר">אחר</option>
+                </select>
+                <textarea id="pExemptions" placeholder="פטורים..."></textarea>
+                <button type="submit" class="btn-primary">שמור</button>
+                <button type="button" onclick="closeAllModals()" class="w-full py-4 text-gray-400">ביטול</button>
+            </form>
+        </div>
+    </div>
+
     <div id="addGuardModal" class="modal" onclick="closeModalOnBackdrop(event)"><div class="modal-content"><h2 class="text-xl font-bold mb-4 border-b pb-2 text-center">הגדרת שמירה</h2><form id="guardForm"><input type="text" id="gType" placeholder="שם השמירה" required><input type="text" id="gLoc" placeholder="מיקום"><input type="number" id="gRank" placeholder="ניקוד" required><input type="text" id="gArm" placeholder="מחסן נשק"><button type="submit" class="btn-primary">שמור</button></form></div></div>
     <div id="addDutyModal" class="modal" onclick="closeModalOnBackdrop(event)"><div class="modal-content"><h2 class="text-xl font-bold mb-4 border-b pb-2 text-center">הגדרת תורנות</h2><form id="dutyForm"><input type="text" id="dType" placeholder="שם התורנות" required><input type="text" id="dLoc" placeholder="מיקום"><input type="number" id="dRank" placeholder="ניקוד" required><button type="submit" class="btn-primary">שמור</button></form></div></div>
-    <div id="personInfoModal" class="modal" onclick="closeModalOnBackdrop(event)"><div class="modal-content"><div id="personDetailsUI"></div><div id="personHistoryUI" class="mt-4 space-y-2 max-h-48 overflow-y-auto"></div><button id="deletePersonBtn" class="w-full text-red-500 font-bold py-6 mt-6 border-t">מחק איש לצמיתות</button><button onclick="closeAllModals()" class="w-full py-4 text-gray-400">סגור</button></div></div>
+    
+    <div id="personInfoModal" class="modal" onclick="closeModalOnBackdrop(event)">
+        <div class="modal-content">
+            <div id="personDetailsUI"></div>
+            <div class="mt-4 flex gap-2">
+                <button id="editPersonBtn" class="flex-1 bg-gray-100 py-3 rounded-xl font-bold text-gray-700">ערוך פרטים</button>
+            </div>
+            <div class="mt-6">
+                <h3 class="font-bold border-b pb-2 mb-3 text-gray-700 text-sm">היסטוריית משימות</h3>
+                <div id="personHistoryUI" class="space-y-3 max-h-48 overflow-y-auto pr-1"></div>
+            </div>
+            <button id="deletePersonBtn" class="w-full text-red-500 font-bold py-6 mt-6 border-t">מחק איש לצמיתות</button>
+            <button onclick="closeAllModals()" class="w-full py-4 text-gray-400 font-medium text-sm">סגור</button>
+        </div>
+    </div>
 
     <script>
         const db = new Dexie("JusticeAppV1");
-        db.version(1).stores({
+        db.version(2).stores({ // עדכון גרסה בגלל שדה חדש
             people: 'personalId, name, section, team, serviceType, exemptions',
             guards: '++id, type, location, rank',
             duties: '++id, type, location, rank',
             executions: '++id, taskId, personalId, date, category, score, taskName'
         });
 
+        let editingPersonId = null;
+
         async function init() { lucide.createIcons(); await renderJustice(); updateDropdowns(); }
 
-        // --- EXPORT / IMPORT ALL DATA ---
         async function exportData() {
             const data = {
                 people: await db.people.toArray(),
@@ -150,7 +169,7 @@
             const url = URL.createObjectURL(blob);
             const a = document.createElement("a");
             a.href = url;
-            a.download = `full_justice_backup_${new Date().toISOString().slice(0,10)}.json`;
+            a.download = `backup_${new Date().toISOString().slice(0,10)}.json`;
             a.click();
         }
 
@@ -174,7 +193,6 @@
             reader.readAsText(file);
         }
 
-        // --- RENDERS ---
         async function renderJustice() {
             const filter = document.getElementById('justiceFilter').value.toLowerCase();
             const sort = document.getElementById('justiceSort').value;
@@ -189,17 +207,17 @@
             if(filter) data = data.filter(p => p.name.includes(filter) || p.personalId.toString().includes(filter));
             data.sort((a,b) => sort === 'totalDesc' ? b.total - a.total : a.total - b.total);
             document.getElementById('justiceList').innerHTML = data.map(p => `
-                <div class="ios-card flex justify-between items-center" onclick="showPerson('${p.personalId}')">
-                    <div><div class="font-bold text-lg">${p.name}</div><div class="text-xs text-gray-400">${p.section}</div></div>
-                    <div class="text-left"><div class="text-2xl font-black text-blue-600 leading-none">${p.total}</div><div class="text-[10px] text-gray-400 mt-1 uppercase">ש: ${p.gScore} | ת: ${p.dScore}</div></div>
+                <div class="ios-card flex justify-between items-center active:bg-gray-50 transition" onclick="showPerson('${p.personalId}')">
+                    <div><div class="font-bold text-lg">${p.name}</div><div class="text-xs text-gray-400">${p.section} | ${p.serviceType || ''}</div></div>
+                    <div class="text-left font-black text-blue-600 text-2xl leading-none">${p.total}</div>
                 </div>`).join('');
         }
 
         async function renderPeople() {
             const filter = document.getElementById('peopleFilter').value.toLowerCase();
             const people = await db.people.toArray();
-            const filtered = people.filter(p => p.name.toLowerCase().includes(filter));
-            document.getElementById('peopleList').innerHTML = filtered.map(p => `<div class="ios-card flex justify-between items-center" onclick="showPerson('${p.personalId}')"><div><strong>${p.name}</strong><br><span class="text-xs text-gray-500">${p.personalId}</span></div><i data-lucide="chevron-left" class="text-gray-300 w-5"></i></div>`).join('');
+            const filtered = people.filter(p => p.name.toLowerCase().includes(filter) || p.personalId.toString().includes(filter));
+            document.getElementById('peopleList').innerHTML = filtered.map(p => `<div class="ios-card flex justify-between items-center" onclick="showPerson('${p.personalId}')"><div><strong>${p.name}</strong><br><span class="text-xs text-gray-500">${p.personalId} | ${p.serviceType || ''}</span></div><i data-lucide="chevron-left" class="text-gray-300 w-5"></i></div>`).join('');
             lucide.createIcons();
         }
 
@@ -218,10 +236,30 @@
         async function showPerson(id) {
             const p = await db.people.get(id);
             const execs = await db.executions.where('personalId').equals(id).toArray();
-            document.getElementById('personDetailsUI').innerHTML = `<h2 class="text-2xl font-bold">${p.name}</h2><p class="text-gray-500">מ.א ${p.personalId}</p><div class="bg-blue-50 p-4 rounded-xl mt-4 text-sm">פטורים: ${p.exemptions || 'אין'}</div>`;
-            document.getElementById('personHistoryUI').innerHTML = execs.map(e => `<div class="flex justify-between py-1 border-b border-gray-50"><span>${e.date} - ${e.taskName}</span><span class="font-bold text-blue-600">+${e.score}</span></div>`).join('');
-            document.getElementById('deletePersonBtn').onclick = async () => { if(confirm('למחוק איש?')) { await db.people.delete(id); await db.executions.where('personalId').equals(id).delete(); closeAllModals(); renderJustice(); renderPeople(); } };
+            document.getElementById('personDetailsUI').innerHTML = `
+                <h2 class="text-3xl font-bold">${p.name}</h2>
+                <p class="text-gray-500">מ.א ${p.personalId} • ${p.section} • ${p.serviceType || 'סוג שירות לא הוגדר'}</p>
+                <div class="bg-blue-50 p-4 rounded-xl mt-4 text-sm leading-relaxed"><strong>פטורים:</strong><br>${p.exemptions || 'אין'}</div>`;
+            
+            document.getElementById('personHistoryUI').innerHTML = execs.map(e => `
+                <div class="flex justify-between py-1 border-b border-gray-50"><span>${e.date} - ${e.taskName}</span><span class="font-bold text-blue-600">+${e.score}</span></div>`).join('');
+            
+            document.getElementById('editPersonBtn').onclick = () => startEditPerson(p);
+            document.getElementById('deletePersonBtn').onclick = async () => { if(confirm('למחוק?')) { await db.people.delete(id); await db.executions.where('personalId').equals(id).delete(); closeAllModals(); renderJustice(); renderPeople(); } };
             openModal('personInfo');
+        }
+
+        function startEditPerson(person) {
+            editingPersonId = person.personalId;
+            document.getElementById('personModalTitle').innerText = "עריכת חייל";
+            document.getElementById('pId').value = person.personalId;
+            document.getElementById('pId').disabled = true; // מ.א הוא מפתח, אי אפשר לשנות
+            document.getElementById('pName').value = person.name;
+            document.getElementById('pSection').value = person.section;
+            document.getElementById('pTeam').value = person.team;
+            document.getElementById('pService').value = person.serviceType || "";
+            document.getElementById('pExemptions').value = person.exemptions || "";
+            openModal('addPerson');
         }
 
         async function updateDropdowns() {
@@ -232,10 +270,35 @@
             document.getElementById('execTask').innerHTML = tasks;
         }
 
-        // --- Logic ---
-        document.getElementById('personForm').onsubmit = async (e) => { e.preventDefault(); await db.people.add({ personalId: document.getElementById('pId').value, name: document.getElementById('pName').value, section: document.getElementById('pSection').value, team: document.getElementById('pTeam').value, exemptions: document.getElementById('pExemptions').value }); closeAllModals(); renderPeople(); renderJustice(); updateDropdowns(); };
-        document.getElementById('guardForm').onsubmit = async (e) => { e.preventDefault(); await db.guards.add({ type: document.getElementById('gType').value, location: document.getElementById('gLoc').value, rank: document.getElementById('gRank').value, armory: document.getElementById('gArm').value }); closeAllModals(); renderGuards(); updateDropdowns(); };
-        document.getElementById('dutyForm').onsubmit = async (e) => { e.preventDefault(); await db.duties.add({ type: document.getElementById('dType').value, location: document.getElementById('dLoc').value, rank: document.getElementById('dRank').value }); closeAllModals(); renderDuties(); updateDropdowns(); };
+        document.getElementById('personForm').onsubmit = async (e) => {
+            e.preventDefault();
+            const personData = {
+                personalId: document.getElementById('pId').value,
+                name: document.getElementById('pName').value,
+                section: document.getElementById('pSection').value,
+                team: document.getElementById('pTeam').value,
+                serviceType: document.getElementById('pService').value,
+                exemptions: document.getElementById('pExemptions').value
+            };
+            
+            if (editingPersonId) {
+                await db.people.update(editingPersonId, personData);
+            } else {
+                await db.people.add(personData);
+            }
+            
+            editingPersonId = null;
+            document.getElementById('pId').disabled = false;
+            document.getElementById('personModalTitle').innerText = "הוספת חייל";
+            e.target.reset(); 
+            closeAllModals(); 
+            renderPeople(); 
+            renderJustice(); 
+            updateDropdowns();
+        };
+
+        document.getElementById('guardForm').onsubmit = async (e) => { e.preventDefault(); await db.guards.add({ type: document.getElementById('gType').value, location: document.getElementById('gLoc').value, rank: document.getElementById('gRank').value, armory: document.getElementById('gArm').value }); e.target.reset(); closeAllModals(); renderGuards(); updateDropdowns(); };
+        document.getElementById('dutyForm').onsubmit = async (e) => { e.preventDefault(); await db.duties.add({ type: document.getElementById('dType').value, location: document.getElementById('dLoc').value, rank: document.getElementById('dRank').value }); e.target.reset(); closeAllModals(); renderDuties(); updateDropdowns(); };
         document.getElementById('execForm').onsubmit = async (e) => { e.preventDefault(); const [cat, score, name] = document.getElementById('execTask').value.split('|'); await db.executions.add({ personalId: document.getElementById('execPerson').value, score: score, taskName: name, category: cat, date: document.getElementById('execDate').value }); closeAllModals(); renderJustice(); };
 
         function switchTab(id) {
@@ -245,11 +308,12 @@
             document.getElementById('btn-' + id).classList.replace('text-gray-400', 'text-blue-600');
             document.getElementById('page-title').innerText = {justice:'טבלת צדק', people:'אנשים', guards:'שמירות', duties:'תורנויות'}[id];
             if(id === 'guards') renderGuards(); if(id === 'duties') renderDuties(); if(id === 'people') renderPeople(); if(id === 'justice') renderJustice();
+            lucide.createIcons();
         }
 
         async function deleteItem(table, id) { if(confirm('למחוק?')) { await db[table].delete(id); renderGuards(); renderDuties(); updateDropdowns(); } }
         function openModal(id) { document.getElementById(id + 'Modal').style.display = 'block'; }
-        function closeAllModals() { document.querySelectorAll('.modal').forEach(m => m.style.display = 'none'); }
+        function closeAllModals() { document.querySelectorAll('.modal').forEach(m => m.style.display = 'none'); editingPersonId = null; document.getElementById('pId').disabled = false; document.getElementById('personModalTitle').innerText = "הוספת חייל"; }
         function closeModalOnBackdrop(e) { if(e.target.classList.contains('modal')) closeAllModals(); }
 
         window.onload = init;
