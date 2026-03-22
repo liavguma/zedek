@@ -61,12 +61,20 @@
 
     <main class="p-4">
         <section id="justice" class="tab-content active">
-            <div class="flex gap-2 mb-4">
-                <select id="justiceSort" onchange="renderJustice()" class="flex-1 shadow-sm">
-                    <option value="totalDesc">מיון: ציון גבוה</option>
-                    <option value="totalAsc">מיון: ציון נמוך</option>
-                </select>
-                <input type="text" id="justiceFilter" oninput="renderJustice()" placeholder="חיפוש חופשי..." class="flex-1 shadow-sm">
+            <div class="flex flex-col gap-2 mb-4">
+                <div class="flex gap-2">
+                    <select id="justiceSort" onchange="renderJustice()" class="flex-1 shadow-sm text-sm">
+                        <option value="totalDesc">מיון: ציון גבוה</option>
+                        <option value="totalAsc">מיון: ציון נמוך</option>
+                    </select>
+                    <select id="serviceFilter" onchange="renderJustice()" class="flex-1 shadow-sm text-sm">
+                        <option value="all">כל סוגי השירות</option>
+                        <option value="חובה">חובה בלבד</option>
+                        <option value="קבע">קבע בלבד</option>
+                        <option value="אחר">אחר</option>
+                    </select>
+                </div>
+                <input type="text" id="justiceFilter" oninput="renderJustice()" placeholder="חיפוש חופשי (שם/מדור...)" class="shadow-sm">
             </div>
             <div id="justiceList"></div>
         </section>
@@ -191,25 +199,36 @@
             reader.readAsText(file);
         }
 
-        // Renders
+        // --- RENDERS ---
         async function renderJustice() {
-            const filter = document.getElementById('justiceFilter').value.toLowerCase();
+            const searchFilter = document.getElementById('justiceFilter').value.toLowerCase();
             const sort = document.getElementById('justiceSort').value;
+            const serviceFilter = document.getElementById('serviceFilter').value;
+            
             const people = await db.people.toArray();
             const execs = await db.executions.toArray();
+
             let data = people.map(p => {
                 const pExecs = execs.filter(e => e.personalId == p.personalId);
                 const gScore = pExecs.filter(e => e.category === 'guard').reduce((s, e) => s + Number(e.score), 0);
                 const dScore = pExecs.filter(e => e.category === 'duty').reduce((s, e) => s + Number(e.score), 0);
                 return { ...p, gScore, dScore, total: gScore + dScore };
             });
-            if(filter) data = data.filter(p => p.name.includes(filter) || p.personalId.toString().includes(filter));
+
+            // סינון לפי חיפוש
+            if(searchFilter) data = data.filter(p => p.name.includes(searchFilter) || p.personalId.toString().includes(searchFilter));
+            
+            // סינון לפי סוג שירות
+            if(serviceFilter !== 'all') data = data.filter(p => p.serviceType === serviceFilter);
+
+            // מיון
             data.sort((a,b) => sort === 'totalDesc' ? b.total - a.total : a.total - b.total);
+
             document.getElementById('justiceList').innerHTML = data.map(p => `
                 <div class="ios-card flex justify-between items-center active:bg-gray-50 transition" onclick="showPerson('${p.personalId}')">
                     <div><div class="font-bold text-lg">${p.name}</div><div class="text-xs text-gray-400">${p.section} | ${p.serviceType || ''}</div></div>
                     <div class="text-left font-black text-blue-600 text-2xl leading-none">${p.total}</div>
-                </div>`).join('');
+                </div>`).join('') || '<p class="text-center text-gray-400 mt-10">אין חיילים התואמים לסינון</p>';
         }
 
         async function renderPeople() {
@@ -244,7 +263,7 @@
                 <div class="flex justify-between py-1 border-b border-gray-50"><span>${e.date} - ${e.taskName}</span><span class="font-bold text-blue-600">+${e.score}</span></div>`).join('');
             
             document.getElementById('editPersonBtn').onclick = () => {
-                closeAllModals(); // חשוב: לסגור את חלונית המידע לפני פתיחת העריכה
+                closeAllModals();
                 setTimeout(() => startEditPerson(p), 100);
             };
             document.getElementById('deletePersonBtn').onclick = async () => { if(confirm('למחוק?')) { await db.people.delete(id); await db.executions.where('personalId').equals(id).delete(); closeAllModals(); renderJustice(); renderPeople(); } };
@@ -272,7 +291,7 @@
             document.getElementById('execTask').innerHTML = tasks;
         }
 
-        // Form Submit
+        // Form Submit Logic
         document.getElementById('personForm').onsubmit = async (e) => {
             e.preventDefault();
             const personData = {
@@ -283,18 +302,8 @@
                 serviceType: document.getElementById('pService').value,
                 exemptions: document.getElementById('pExemptions').value
             };
-            
-            if (editingPersonId) {
-                await db.people.update(editingPersonId, personData);
-            } else {
-                await db.people.add(personData);
-            }
-            
-            e.target.reset(); 
-            closeAllModals(); 
-            renderPeople(); 
-            renderJustice(); 
-            updateDropdowns();
+            if (editingPersonId) { await db.people.update(editingPersonId, personData); } else { await db.people.add(personData); }
+            e.target.reset(); closeAllModals(); renderPeople(); renderJustice(); updateDropdowns();
         };
 
         document.getElementById('guardForm').onsubmit = async (e) => { e.preventDefault(); await db.guards.add({ type: document.getElementById('gType').value, location: document.getElementById('gLoc').value, rank: document.getElementById('gRank').value, armory: document.getElementById('gArm').value }); e.target.reset(); closeAllModals(); renderGuards(); updateDropdowns(); };
@@ -313,12 +322,7 @@
 
         async function deleteItem(table, id) { if(confirm('למחוק?')) { await db[table].delete(id); renderGuards(); renderDuties(); updateDropdowns(); } }
         function openModal(id) { document.getElementById(id + 'Modal').style.display = 'block'; }
-        function closeAllModals() { 
-            document.querySelectorAll('.modal').forEach(m => m.style.display = 'none'); 
-            editingPersonId = null; 
-            document.getElementById('pId').disabled = false; 
-            document.getElementById('personModalTitle').innerText = "הוספת חייל"; 
-        }
+        function closeAllModals() { document.querySelectorAll('.modal').forEach(m => m.style.display = 'none'); editingPersonId = null; document.getElementById('pId').disabled = false; document.getElementById('personModalTitle').innerText = "הוספת חייל"; }
         function closeModalOnBackdrop(e) { if(e.target.classList.contains('modal')) closeAllModals(); }
 
         window.onload = init;
