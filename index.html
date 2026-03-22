@@ -14,17 +14,14 @@
         :root { --ios-bg: #F2F2F7; --ios-blue: #007AFF; }
         body { background-color: var(--ios-bg); font-family: -apple-system, system-ui; margin: 0; padding: 0; min-height: 100vh; }
         
-        /* תיקון הריווח מהמצלמה/Dynamic Island */
+        /* תיקון ריווח מהמצלמה (Dynamic Island) */
         header {
             padding-top: env(safe-area-inset-top); 
             background-color: rgba(255, 255, 255, 0.85);
             backdrop-filter: blur(10px);
             -webkit-backdrop-filter: blur(10px);
         }
-        .safe-top { 
-            padding-top: 15px; 
-            padding-bottom: 12px;
-        }
+        .safe-top { padding-top: 15px; padding-bottom: 12px; }
 
         .tab-content { display: none; padding-bottom: 140px; }
         .tab-content.active { display: block; animation: fadeIn 0.2s ease-in; }
@@ -83,14 +80,14 @@
         </section>
 
         <section id="guards" class="tab-content">
-            <button onclick="openModal('addGuard')" class="ios-card w-full flex items-center justify-center gap-2 text-blue-600 font-bold mb-4 border-2 border-dashed border-blue-100">
+            <button onclick="openModal('addGuard')" class="ios-card w-full flex items-center justify-center gap-2 text-blue-600 font-bold mb-4 border-2 border-dashed border-blue-100 text-sm">
                 <i data-lucide="shield-plus"></i> הגדרת שמירה חדשה
             </button>
             <div id="guardsList"></div>
         </section>
 
         <section id="duties" class="tab-content">
-            <button onclick="openModal('addDuty')" class="ios-card w-full flex items-center justify-center gap-2 text-blue-600 font-bold mb-4 border-2 border-dashed border-blue-100">
+            <button onclick="openModal('addDuty')" class="ios-card w-full flex items-center justify-center gap-2 text-blue-600 font-bold mb-4 border-2 border-dashed border-blue-100 text-sm">
                 <i data-lucide="clipboard-list"></i> הגדרת תורנות חדשה
             </button>
             <div id="dutiesList"></div>
@@ -122,7 +119,7 @@
                 </select>
                 <textarea id="pExemptions" placeholder="פטורים..."></textarea>
                 <button type="submit" class="btn-primary">שמור</button>
-                <button type="button" onclick="closeAllModals()" class="w-full py-4 text-gray-400">ביטול</button>
+                <button type="button" onclick="closeAllModals()" class="w-full py-2 text-gray-400">ביטול</button>
             </form>
         </div>
     </div>
@@ -134,20 +131,20 @@
         <div class="modal-content">
             <div id="personDetailsUI"></div>
             <div class="mt-4 flex gap-2">
-                <button id="editPersonBtn" class="flex-1 bg-gray-100 py-3 rounded-xl font-bold text-gray-700">ערוך פרטים</button>
+                <button id="editPersonBtn" class="flex-1 bg-gray-100 py-3 rounded-xl font-bold text-gray-700 active:bg-gray-200">ערוך פרטים</button>
             </div>
             <div class="mt-6">
                 <h3 class="font-bold border-b pb-2 mb-3 text-gray-700 text-sm">היסטוריית משימות</h3>
                 <div id="personHistoryUI" class="space-y-3 max-h-48 overflow-y-auto pr-1"></div>
             </div>
-            <button id="deletePersonBtn" class="w-full text-red-500 font-bold py-6 mt-6 border-t">מחק איש לצמיתות</button>
+            <button id="deletePersonBtn" class="w-full text-red-500 font-bold py-6 mt-6 border-t active:bg-red-50">מחק איש לצמיתות</button>
             <button onclick="closeAllModals()" class="w-full py-4 text-gray-400 font-medium text-sm">סגור</button>
         </div>
     </div>
 
     <script>
         const db = new Dexie("JusticeAppV1");
-        db.version(2).stores({ // עדכון גרסה בגלל שדה חדש
+        db.version(2).stores({
             people: 'personalId, name, section, team, serviceType, exemptions',
             guards: '++id, type, location, rank',
             duties: '++id, type, location, rank',
@@ -158,6 +155,7 @@
 
         async function init() { lucide.createIcons(); await renderJustice(); updateDropdowns(); }
 
+        // Export/Import
         async function exportData() {
             const data = {
                 people: await db.people.toArray(),
@@ -193,6 +191,7 @@
             reader.readAsText(file);
         }
 
+        // Renders
         async function renderJustice() {
             const filter = document.getElementById('justiceFilter').value.toLowerCase();
             const sort = document.getElementById('justiceSort').value;
@@ -238,13 +237,16 @@
             const execs = await db.executions.where('personalId').equals(id).toArray();
             document.getElementById('personDetailsUI').innerHTML = `
                 <h2 class="text-3xl font-bold">${p.name}</h2>
-                <p class="text-gray-500">מ.א ${p.personalId} • ${p.section} • ${p.serviceType || 'סוג שירות לא הוגדר'}</p>
+                <p class="text-gray-500">מ.א ${p.personalId} • ${p.section} • ${p.serviceType || ''}</p>
                 <div class="bg-blue-50 p-4 rounded-xl mt-4 text-sm leading-relaxed"><strong>פטורים:</strong><br>${p.exemptions || 'אין'}</div>`;
             
             document.getElementById('personHistoryUI').innerHTML = execs.map(e => `
                 <div class="flex justify-between py-1 border-b border-gray-50"><span>${e.date} - ${e.taskName}</span><span class="font-bold text-blue-600">+${e.score}</span></div>`).join('');
             
-            document.getElementById('editPersonBtn').onclick = () => startEditPerson(p);
+            document.getElementById('editPersonBtn').onclick = () => {
+                closeAllModals(); // חשוב: לסגור את חלונית המידע לפני פתיחת העריכה
+                setTimeout(() => startEditPerson(p), 100);
+            };
             document.getElementById('deletePersonBtn').onclick = async () => { if(confirm('למחוק?')) { await db.people.delete(id); await db.executions.where('personalId').equals(id).delete(); closeAllModals(); renderJustice(); renderPeople(); } };
             openModal('personInfo');
         }
@@ -253,7 +255,7 @@
             editingPersonId = person.personalId;
             document.getElementById('personModalTitle').innerText = "עריכת חייל";
             document.getElementById('pId').value = person.personalId;
-            document.getElementById('pId').disabled = true; // מ.א הוא מפתח, אי אפשר לשנות
+            document.getElementById('pId').disabled = true;
             document.getElementById('pName').value = person.name;
             document.getElementById('pSection').value = person.section;
             document.getElementById('pTeam').value = person.team;
@@ -270,6 +272,7 @@
             document.getElementById('execTask').innerHTML = tasks;
         }
 
+        // Form Submit
         document.getElementById('personForm').onsubmit = async (e) => {
             e.preventDefault();
             const personData = {
@@ -287,9 +290,6 @@
                 await db.people.add(personData);
             }
             
-            editingPersonId = null;
-            document.getElementById('pId').disabled = false;
-            document.getElementById('personModalTitle').innerText = "הוספת חייל";
             e.target.reset(); 
             closeAllModals(); 
             renderPeople(); 
@@ -313,7 +313,12 @@
 
         async function deleteItem(table, id) { if(confirm('למחוק?')) { await db[table].delete(id); renderGuards(); renderDuties(); updateDropdowns(); } }
         function openModal(id) { document.getElementById(id + 'Modal').style.display = 'block'; }
-        function closeAllModals() { document.querySelectorAll('.modal').forEach(m => m.style.display = 'none'); editingPersonId = null; document.getElementById('pId').disabled = false; document.getElementById('personModalTitle').innerText = "הוספת חייל"; }
+        function closeAllModals() { 
+            document.querySelectorAll('.modal').forEach(m => m.style.display = 'none'); 
+            editingPersonId = null; 
+            document.getElementById('pId').disabled = false; 
+            document.getElementById('personModalTitle').innerText = "הוספת חייל"; 
+        }
         function closeModalOnBackdrop(e) { if(e.target.classList.contains('modal')) closeAllModals(); }
 
         window.onload = init;
